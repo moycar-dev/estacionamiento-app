@@ -8,11 +8,11 @@
 <meta name="theme-color" content="#A8432A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Estacionamiento">
+<meta name="apple-mobile-web-app-title" content="San Juan de Dios">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>Control Estacionamiento</title>
+<title>Estacionamiento San Juan de Dios</title>
 <style>
 /* Paleta inspirada en las fachadas del barrio de San Juan de Dios, León */
 :root{
@@ -28,6 +28,8 @@
 .hero{background:var(--terra);color:#fff;margin:calc(-16px - env(safe-area-inset-top)) -16px 18px;padding:calc(22px + env(safe-area-inset-top)) 20px 20px;border-radius:0 0 24px 24px;position:relative;overflow:hidden}
 .hero h1{margin:0;font-size:30px;letter-spacing:.01em}
 .hero .date{color:#FCE9DF;margin:2px 0 0}
+.clock{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:10px}
+.clock small{font-size:15px;font-weight:600;color:#FCE9DF;margin-left:6px}
 .stripe{display:flex;height:8px;border-radius:999px;overflow:hidden;margin:16px 0 0}
 .stripe i{flex:1}
 .stripe i:nth-child(1){background:var(--ocre)} .stripe i:nth-child(2){background:var(--rosa)} .stripe i:nth-child(3){background:#FFFFFF} .stripe i:nth-child(4){background:var(--anil)} .stripe i:nth-child(5){background:var(--verde)}
@@ -267,7 +269,7 @@ function cuando(p) {
 /* ---------- vistas ---------- */
 function vInicio() {
   const urg = ritmos().filter(p => p.int !== undefined && p.left <= p.warn);
-  let h = '<div class="hero"><h1>Estacionamiento</h1><div class="date">' + fdate(today()) + '</div><div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>' + statusLine() + adminNote();
+  let h = '<div class="hero"><div style="font-size:18px;font-weight:600;color:#FCE9DF">Estacionamiento</div><h1>San Juan de Dios</h1><div class="date">' + fdate(today()) + '</div><div class="clock" id="clock">' + clockStr() + '</div><div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>' + statusLine() + adminNote();
   h += '<button class="big k-servicio" data-new="servicio"><span class="tile">' + ICON.servicio + '</span>Anotar un servicio</button>';
   h += '<button class="big k-cambio" data-new="cambio"><span class="tile">' + ICON.cambio + '</span>Anotar cambio al cajero</button>';
   h += '<button class="big k-ganancia" data-new="ganancia"><span class="tile">' + ICON.ganancia + '</span>Anotar ganancia del día</button>';
@@ -595,6 +597,15 @@ async function sync(manual) {
 window.addEventListener('online', () => sync());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
 setInterval(() => { if (!document.hidden) sync(); }, 60000);
+
+/* ---------- reloj (hora de la Ciudad de México) ---------- */
+const CLK = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+function clockStr() {
+  const parts = CLK.formatToParts(new Date());
+  const g = (t) => (parts.find(p => p.type === t) || {}).value || '';
+  return g('hour') + ':' + g('minute') + ':' + g('second') + '<small>' + esc(g('dayPeriod')) + ' · hora CDMX</small>';
+}
+setInterval(() => { const c = document.getElementById('clock'); if (c) c.innerHTML = clockStr(); }, 1000);
 
 /* ---------- conexión por enlace ---------- */
 const URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
