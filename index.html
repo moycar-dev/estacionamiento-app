@@ -161,7 +161,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.3.0';
+const VER = '1.4.0';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 20, 50];
@@ -216,7 +216,12 @@ const mxn = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN',
 const money = (n) => mxn.format(Math.round(Number(n) || 0));
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-const today = () => iso(new Date());
+const TZ = 'America/Mexico_City';
+const DPF = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const TPF = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const today = () => DPF.format(new Date()); // fecha de CDMX
+const nowTime = () => TPF.format(new Date()); // HH:MM de CDMX
+const fmt12 = (t) => { if (!/^\d{2}:\d{2}$/.test(t || '')) return ''; let [h, m] = t.split(':').map(Number); const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0') + ' ' + ap; };
 const parse = (s) => new Date(s + 'T12:00:00');
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
 const diffDays = (a, b) => Math.round((parse(a) - parse(b)) / 864e5);
@@ -314,17 +319,17 @@ function line(r) {
   if (r.kind === 'servicio') t = esc(eqName(r.equip)) + ': ' + esc(r.type);
   else if (r.kind === 'cambio') { t = 'Cambio al cajero'; amt = money(r.monto); }
   else { t = 'Ganancia' + (r.autos ? ' (' + r.autos + ' autos)' : ''); amt = money(r.monto); }
-  const m = [rel(r.date), r.by].filter(Boolean).map(esc).join(' · ');
+  const m = [rel(r.date) + (r.time ? ', ' + fmt12(r.time) : ''), r.by].filter(Boolean).map(esc).join(' · ');
   return '<button class="row" type="button" data-edit="' + esc(r.id) + '"><span><div class="t">' + t + '</div><div class="m">' + m + '</div></span><span class="amt">' + amt + '</span></button>';
 }
-function sortRegs(arr) { return arr.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.updatedAt || 0) - (a.updatedAt || 0)); }
+function sortRegs(arr) { return arr.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '') || (b.updatedAt || 0) - (a.updatedAt || 0)); }
 
 function vHistorial() {
   let R = live();
   if (H.kind !== 'all') R = R.filter(r => r.kind === H.kind);
   R = sortRegs(R).slice(0, 200);
   const chip = (v, l) => '<button class="chip' + (H.kind === v ? ' on' : '') + '" data-h="' + v + '">' + l + '</button>';
-  let h = '<div class="pagehead"><h1>Historial</h1><div class="date">Toca un renglón para corregirlo.</div></div>';
+  let h = '<div class="pagehead"><h1>Historial</h1><div class="date">Si algo quedó mal, tócalo para corregirlo o borrarlo.</div></div>';
   h += '<div class="chips">' + chip('all', 'Todo') + chip('servicio', 'Servicios') + chip('cambio', 'Cambio') + chip('ganancia', 'Ganancias') + '</div>';
   return h + (R.length ? R.map(line).join('') : '<div class="empty">Todavía no hay nada anotado aquí.</div>');
 }
@@ -491,7 +496,7 @@ let F = null; // borrador en captura
 function openScreen() { scr.classList.add('open'); scrIn.scrollTop = 0; document.body.style.overflow = 'hidden'; }
 function closeScreen() { scr.classList.remove('open'); document.body.style.overflow = ''; F = null; render(true); }
 function startNew(kind) {
-  F = { rec: { id: rid(), kind, date: today(), by: S.set.name || '' }, isNew: true, step: kind === 'servicio' ? 1 : 3 };
+  F = { rec: { id: rid(), kind, date: today(), time: nowTime(), by: S.set.name || '' }, isNew: true, step: kind === 'servicio' ? 1 : 3 };
   drawStep(); openScreen();
 }
 function startEdit(r) {
@@ -507,13 +512,13 @@ function drawStep() {
     h += '<div class="q">¿Qué se le hizo ' + (/^(la |pluma)/i.test(eqName(r.equip)) ? 'a la ' + esc(eqName(r.equip).replace(/^la /i, '').toLowerCase()) : 'al ' + esc(eqName(r.equip).replace(/^el /i, '').toLowerCase())) + '?</div>' +
       (S.config[r.equip].tasks || []).map((t, i) => '<button class="choice" data-type-pick="' + i + '">' + esc(t.name) + '</button>').join('');
   } else {
-    const more = '<details' + (F.isNew ? '' : ' open') + '><summary>Cambiar fecha o agregar nota</summary>' +
-      '<label for="fDa">Fecha</label><input id="fDa" type="date" value="' + esc(r.date) + '">' +
+    const more = '<details' + (F.isNew ? '' : ' open') + '><summary>Cambiar fecha u hora, o agregar nota</summary>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label for="fDa">Fecha</label><input id="fDa" type="date" value="' + esc(r.date) + '"></div><div><label for="fTi">Hora</label><input id="fTi" type="time" value="' + esc(r.time || '') + '"></div></div>' +
       '<label for="fBy">¿Quién lo hizo?</label><input id="fBy" value="' + esc(r.by || '') + '">' +
       (r.kind === 'servicio' ? '<label for="fCo">¿Cuánto costó? (si costó)</label><input id="fCo" type="number" inputmode="decimal" min="0" step="any" value="' + esc(r.cost ?? '') + '">' : '') +
       '<label for="fNo">Nota</label><textarea id="fNo">' + esc(r.notes || '') + '</textarea></details>';
     if (r.kind === 'servicio') {
-      h += '<div class="q">¿Guardar este servicio?</div><div class="summary"><b>' + esc(eqName(r.equip)) + '</b>' + esc(r.type) + '<br><span class="small">' + rel(r.date) + '</span></div>';
+      h += '<div class="q">¿Guardar este servicio?</div><div class="summary"><b>' + esc(eqName(r.equip)) + '</b>' + esc(r.type) + '<br><span class="small">' + rel(r.date) + (r.time ? ', ' + fmt12(r.time) : '') + '</span></div>';
       if (!F.isNew) h += '<button class="link" type="button" data-restart>Cambiar equipo o servicio</button>';
       h += more;
     } else if (r.kind === 'cambio') {
@@ -568,6 +573,7 @@ function saveForm() {
   const r = F.rec, n = (v) => v === '' || v == null ? undefined : Number(v);
   const v = (id) => { const el = $('#' + id); return el ? el.value.trim() : ''; };
   r.date = v('fDa') || r.date || today();
+  const tm = v('fTi'); if (/^\d{2}:\d{2}$/.test(tm)) r.time = tm;
   r.by = v('fBy'); r.notes = v('fNo');
   if (r.kind === 'servicio') r.cost = n(v('fCo'));
   else {
@@ -596,7 +602,7 @@ $('#main').addEventListener('click', (e) => {
   const dn = t.closest('[data-done]');
   if (dn) {
     const [k, ...rest] = dn.dataset.done.split('|');
-    const r = { id: rid(), kind: 'servicio', equip: k, type: rest.join('|'), date: today(), by: S.set.name || '', dev: S.set.device, updatedAt: Date.now() };
+    const r = { id: rid(), kind: 'servicio', equip: k, type: rest.join('|'), date: today(), time: nowTime(), by: S.set.name || '', dev: S.set.device, updatedAt: Date.now() };
     S.regs.push(r); markPend(r.id); save(); render(); toast('Listo, quedó anotado'); return sync();
   }
   const hc = t.closest('[data-h]'); if (hc) { H.kind = hc.dataset.h; return render(); }
@@ -636,9 +642,9 @@ $('#main').addEventListener('click', (e) => {
 });
 
 function exportCSV() {
-  const cols = ['fecha', 'registro', 'equipo', 'servicio', 'monto', 'autos', 'costo', 'quien', 'notas'];
+  const cols = ['fecha', 'hora', 'registro', 'equipo', 'servicio', 'monto', 'autos', 'costo', 'quien', 'notas'];
   const q = (v) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-  const rows = sortRegs(live()).map(r => [r.date, r.kind, r.equip ? eqName(r.equip) : '', r.type, r.monto, r.autos, r.cost, r.by, r.notes].map(q).join(','));
+  const rows = sortRegs(live()).map(r => [r.date, r.time, r.kind, r.equip ? eqName(r.equip) : '', r.type, r.monto, r.autos, r.cost, r.by, r.notes].map(q).join(','));
   const blob = new Blob(['﻿' + cols.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'estacionamiento-' + today() + '.csv';
   document.body.appendChild(a); a.click(); a.remove();
