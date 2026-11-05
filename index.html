@@ -91,6 +91,17 @@ button.row{width:100%;background:none;border-left:0;border-right:0;border-top:0;
 .chip{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:10px 18px;font-size:18px;min-height:52px}
 .chip.on{background:var(--terra);border-color:var(--terra);color:#fff}
 .chip{background:var(--card)}
+.card{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:16px;margin-bottom:16px;border-top:8px solid var(--terra)}
+.card.c-g{border-top-color:var(--verde)} .card.c-p{border-top-color:var(--anil)} .card.c-c{border-top-color:var(--ocre)} .card.c-s{border-top-color:var(--rosa)}
+.ct{font-size:19px;font-weight:700;color:var(--muted)}
+.big-n{font-size:40px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;margin:2px 0 4px}
+.cmp{font-size:17px;font-weight:700;margin-bottom:10px;color:var(--muted)}
+.cmp.up{color:var(--verde)} .cmp.down{color:var(--red)}
+.card h3{font-size:19px;margin:22px 0 6px}
+.prog{height:16px;background:var(--anil-soft);border-radius:999px;overflow:hidden;margin:8px 0 6px}
+.prog span{display:block;height:100%;background:var(--anil);border-radius:999px}
+svg.chart{width:100%;height:auto;display:block;margin-top:6px}
+.card details{margin-top:10px}
 details{border-top:1px solid var(--line);margin-top:24px;padding-top:6px}
 summary{font-size:19px;color:var(--blue);padding:14px 0;cursor:pointer;min-height:52px}
 nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:3px solid var(--terra);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
@@ -150,7 +161,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.2.0';
+const VER = '1.3.0';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 20, 50];
@@ -318,60 +329,126 @@ function vHistorial() {
   return h + (R.length ? R.map(line).join('') : '<div class="empty">Todavía no hay nada anotado aquí.</div>');
 }
 
-function hbars(vals, fmt) {
-  const max = Math.max(1, ...vals), top = vals.indexOf(Math.max(...vals));
-  return vals.map((v, i) => '<div class="hbar' + (i === top && v > 0 ? ' top' : '') + '"><span class="lbl">' + DIAS[i] + '</span><span class="track"><span class="fill" style="display:block;width:' + (v / max * 100).toFixed(1) + '%"></span><span class="val">' + fmt(v) + '</span></span></div>').join('');
+/* ---------- gráficas ---------- */
+const DCORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const kfmt = (n) => { n = Math.round(Number(n) || 0); return n >= 1000 ? '$' + (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.0', '') + 'k' : '$' + n; };
+function vbars(data, color, soft, o) {
+  o = o || {};
+  const W = 340, Hh = 180, pt = 22, pb = 28, n = Math.max(1, data.length);
+  const max = Math.max(1, ...data.map(d => d.v), o.avg || 0);
+  const bw = W / n, inner = Math.min(38, bw * .72);
+  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="' + esc(o.label || 'Gráfica') + '">';
+  const every = Math.ceil(n / 8);
+  data.forEach((d, i) => {
+    const h = Math.max(d.v > 0 ? 3 : 0, (Hh - pt - pb) * d.v / max), x = i * bw + (bw - inner) / 2, y = Hh - pb - h;
+    const fill = d.hi ? color : (d.est ? soft : color);
+    s += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + inner.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="5" fill="' + fill + '"' + (d.est ? ' stroke="' + color + '" stroke-dasharray="4 3" stroke-width="1.5"' : '') + (d.hi === false ? ' opacity=".45"' : '') + '><title>' + esc(d.t || d.s) + ': ' + money(d.v) + '</title></rect>';
+    if (o.values && d.v > 0) s += '<text x="' + (x + inner / 2).toFixed(1) + '" y="' + (y - 6).toFixed(1) + '" font-size="12" font-weight="700" text-anchor="middle" fill="#2A1A12">' + kfmt(d.v) + '</text>';
+    if (i % every === 0 || n <= 8) s += '<text x="' + (x + inner / 2).toFixed(1) + '" y="' + (Hh - 8) + '" font-size="13" text-anchor="middle" fill="#5E4B3E"' + (d.hi ? ' font-weight="800"' : '') + '>' + esc(d.s) + '</text>';
+  });
+  if (o.avg) {
+    const y = Hh - pb - (Hh - pt - pb) * o.avg / max;
+    s += '<line x1="0" x2="' + W + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#2A1A12" stroke-width="1.5" stroke-dasharray="6 5" opacity=".55"/>';
+  }
+  return s + '</svg>' + (o.avg ? '<div class="small">- - - Promedio por día: ' + money(o.avg) + '</div>' : '');
+}
+
+/* ---------- cálculos para el resumen ---------- */
+function porDia(regs) {
+  const m = {};
+  regs.forEach(r => { const o = m[r.date] = m[r.date] || { g: 0, c: 0, hasG: false }; if (r.kind === 'ganancia') { o.g += Number(r.monto) || 0; o.hasG = true; } if (r.kind === 'cambio') o.c += Number(r.monto) || 0; });
+  return m;
+}
+// Promedio por día de la semana de las últimas 8 semanas. Ganancia: sobre días anotados. Cambio: sobre todos los días.
+function patron(byDate) {
+  const t = today(), first = Object.keys(byDate).sort()[0];
+  if (!first) return null;
+  const start = first > addDays(t, -55) ? first : addDays(t, -55);
+  const sg = Array(7).fill(0), ng = Array(7).fill(0), sc = Array(7).fill(0), nd = Array(7).fill(0);
+  let daysG = 0;
+  for (let d = start; d <= t; d = addDays(d, 1)) {
+    const w = dow(d), o = byDate[d]; nd[w]++;
+    if (o && o.hasG) { sg[w] += o.g; ng[w]++; daysG++; }
+    if (o) sc[w] += o.c;
+  }
+  const allG = sg.reduce((a, b) => a + b, 0) / Math.max(1, daysG);
+  return { g: sg.map((v, i) => ng[i] ? v / ng[i] : allG), c: sc.map((v, i) => nd[i] ? v / nd[i] : 0), daysG };
+}
+function cambioPct(now, prev) {
+  if (!prev) return '';
+  const p = Math.round((now - prev) / prev * 100);
+  if (p === 0) return '<div class="cmp">Igual que el periodo anterior</div>';
+  return '<div class="cmp ' + (p > 0 ? 'up' : 'down') + '">' + (p > 0 ? '▲ ' : '▼ ') + Math.abs(p) + '% ' + (p > 0 ? 'más' : 'menos') + ' que el periodo anterior</div>';
 }
 
 function vDash() {
-  const t = today(), all = live();
-  const start = D.n ? addDays(t, -(D.n - 1)) : (all.map(r => r.date).sort()[0] || t);
-  const R = all.filter(r => r.date >= start && r.date <= t);
-  const ndays = diffDays(t, start) + 1;
-  const chip = (n, l) => '<button class="chip' + (D.n === n ? ' on' : '') + '" data-d="' + n + '">' + l + '</button>';
+  const t = today(), all = live(), byAll = porDia(all);
+  const n = D.n || 30, start = addDays(t, -(n - 1)), pStart = addDays(start, -n), pEnd = addDays(start, -1);
+  const inR = (a, b) => all.filter(r => r.date >= a && r.date <= b);
+  const R = inR(start, t), P = inR(pStart, pEnd);
+  const gTot = sum(R.filter(r => r.kind === 'ganancia'), 'monto'), gPrev = sum(P.filter(r => r.kind === 'ganancia'), 'monto');
+  const cTot = sum(R.filter(r => r.kind === 'cambio'), 'monto'), cPrev = sum(P.filter(r => r.kind === 'cambio'), 'monto');
+  const chip = (v, l) => '<button class="chip' + (n === v ? ' on' : '') + '" data-d="' + v + '">' + l + '</button>';
   let h = '<div class="pagehead"><h1>Resumen</h1><div class="date">Cómo va el estacionamiento.</div></div>';
-  h += '<div class="chips">' + chip(7, 'Última semana') + chip(30, 'Último mes') + chip(90, '3 meses') + chip(0, 'Todo') + '</div>';
-  const G = R.filter(r => r.kind === 'ganancia'), C = R.filter(r => r.kind === 'cambio'), Sv = R.filter(r => r.kind === 'servicio');
-  const gTot = sum(G, 'monto'), cTot = sum(C, 'monto'), gDays = new Set(G.map(r => r.date)).size;
-  h += '<div class="nums"><div class="num n-g"><div class="l">Se ganó</div><div class="v">' + money(gTot) + '</div></div>' +
-    '<div class="num n-p"><div class="l">Se ganó en promedio por día</div><div class="v">' + money(gDays ? gTot / gDays : 0) + '</div></div>' +
-    '<div class="num n-c"><div class="l">Cambio que se puso al cajero</div><div class="v">' + money(cTot) + '</div></div></div>';
+  h += '<div class="chips">' + chip(7, 'Semana') + chip(30, 'Mes') + chip(90, '3 meses') + '</div>';
 
-  const byDate = {};
-  R.forEach(r => { const o = byDate[r.date] = byDate[r.date] || { g: 0, c: 0 }; if (r.kind === 'ganancia') o.g += Number(r.monto) || 0; if (r.kind === 'cambio') o.c += Number(r.monto) || 0; });
-  const cnt = [0, 0, 0, 0, 0, 0, 0], wc = [0, 0, 0, 0, 0, 0, 0], wg = [0, 0, 0, 0, 0, 0, 0];
-  for (let i = 0; i < ndays; i++) cnt[dow(addDays(start, i))]++;
-  Object.keys(byDate).forEach(d => { wc[dow(d)] += byDate[d].c; wg[dow(d)] += byDate[d].g; });
-  const ac = wc.map((v, i) => cnt[i] ? v / cnt[i] : 0), ag = wg.map((v, i) => cnt[i] ? v / cnt[i] : 0);
+  // serie de ganancia
+  const step = n > 31 ? 7 : 1, serie = [];
+  for (let i = 0; i < n; i += step) {
+    let v = 0; const d0 = addDays(start, i);
+    for (let j = 0; j < step && i + j < n; j++) { const o = byAll[addDays(start, i + j)]; if (o) v += o.g; }
+    const d = parse(d0);
+    serie.push({ v, s: n <= 7 ? DCORTO[dow(d0)] : step > 1 ? d.getDate() + '/' + (d.getMonth() + 1) : String(d.getDate()), t: (step > 1 ? 'Semana del ' : '') + fdate(d0) });
+  }
+  const gDays = R.filter(r => r.kind === 'ganancia').map(r => r.date).filter((v, i, a) => a.indexOf(v) === i).length;
+  const avgBar = step > 1 ? 0 : (gDays ? gTot / gDays : 0);
+  h += '<section class="card c-g"><div class="ct">Ganancia</div><div class="big-n">' + money(gTot) + '</div>' + cambioPct(gTot, gPrev) +
+    (gTot ? vbars(serie, '#2D6E3E', '#9CC6A6', { avg: avgBar, values: n <= 7, label: 'Ganancia por día' }) : '<div class="empty">Aún no hay ganancias anotadas.</div>') + '</section>';
 
-  h += '<h2>¿Qué día se pone más cambio?</h2>';
-  if (cTot) h += '<p class="say">El <b>' + DIAS[ac.indexOf(Math.max(...ac))].toLowerCase() + '</b> es el día que más cambio se pone.</p>' + '<div class="bars-c">' + hbars(ac, money) + '</div>' + '<p class="small">Cantidad promedio en cada día de la semana.</p>';
-  else h += '<div class="empty">Aún no hay cambio anotado en este periodo.</div>';
+  // proyección
+  const pt = patron(byAll);
+  h += '<section class="card c-p"><div class="ct">Proyección</div>';
+  if (!pt || pt.daysG < 7) {
+    h += '<p class="say">Para calcular proyecciones se necesitan al menos 7 días de ganancia anotada.' + (pt ? ' Llevan ' + pt.daysG + '.' : '') + '</p>';
+  } else {
+    const td = parse(t), mStart = iso(new Date(td.getFullYear(), td.getMonth(), 1)), mEnd = iso(new Date(td.getFullYear(), td.getMonth() + 1, 0));
+    const mes = inR(mStart, t), hoyG = byAll[t] && byAll[t].hasG;
+    let gMes = sum(mes.filter(r => r.kind === 'ganancia'), 'monto'), cMes = sum(mes.filter(r => r.kind === 'cambio'), 'monto');
+    let gProj = gMes, cProj = cMes;
+    for (let d = hoyG ? addDays(t, 1) : t; d <= mEnd; d = addDays(d, 1)) { gProj += pt.g[dow(d)]; if (d > t) cProj += pt.c[dow(d)]; }
+    const pct = gProj ? Math.min(100, gMes / gProj * 100) : 0;
+    h += '<p class="say">Si todo sigue igual, en <b>' + MESES[td.getMonth()] + '</b> se va a ganar cerca de</p><div class="big-n">' + money(gProj) + '</div>' +
+      '<div class="prog" aria-hidden="true"><span style="width:' + pct.toFixed(1) + '%"></span></div><div class="small">Van ' + money(gMes) + ' hasta hoy · cambio estimado del mes: ' + money(cProj) + '</div>';
+    const next = [];
+    for (let i = 1; i <= 7; i++) { const d = addDays(t, i); next.push({ v: pt.c[dow(d)], s: DCORTO[dow(d)], t: fdate(d), est: true }); }
+    const mx = Math.max(...next.map(x => x.v));
+    if (mx > 0) {
+      const top = next.find(x => x.v === mx); top.hi = true; top.est = false;
+      h += '<h3>Cambio para los próximos 7 días</h3><p class="say">Ten más cambio listo el <b>' + DIAS[DCORTO.indexOf(top.s)].toLowerCase() + '</b> (cerca de ' + money(mx) + ').</p>' + vbars(next, '#D99A1E', '#FCEFD2', { values: true, label: 'Cambio estimado próximos 7 días' });
+    }
+    h += '<p class="small">Estimado con el promedio de cada día de la semana de las últimas 8 semanas. Entre más días anoten, más exacto.</p>';
+  }
+  h += '</section>';
 
-  h += '<h2>¿Qué día se gana más?</h2>';
-  if (gTot) h += '<p class="say">El <b>' + DIAS[ag.indexOf(Math.max(...ag))].toLowerCase() + '</b> es el día que más se gana.</p>' + '<div class="bars-g">' + hbars(ag, money) + '</div>' + '<p class="small">Promedio por día. Para que sea exacto, anoten la ganancia todos los días.</p>';
-  else h += '<div class="empty">Aún no hay ganancias anotadas en este periodo.</div>';
+  // cambio por día de la semana
+  const cnt = Array(7).fill(0), wc = Array(7).fill(0);
+  for (let i = 0; i < n; i++) cnt[dow(addDays(start, i))]++;
+  R.filter(r => r.kind === 'cambio').forEach(r => { wc[dow(r.date)] += Number(r.monto) || 0; });
+  const ac = wc.map((v, i) => cnt[i] ? v / cnt[i] : 0), mxc = Math.max(...ac);
+  h += '<section class="card c-c"><div class="ct">Cambio al cajero</div><div class="big-n">' + money(cTot) + '</div>' + cambioPct(cTot, cPrev);
+  if (cTot) h += '<p class="say">El día que más cambio se pone es el <b>' + DIAS[ac.indexOf(mxc)].toLowerCase() + '</b>.</p>' + vbars(ac.map((v, i) => ({ v, s: DCORTO[i], t: DIAS[i], hi: v === mxc ? true : false })), '#D99A1E', '#EBC26E', { values: true, label: 'Cambio promedio por día de la semana' }) + '<p class="small">Promedio por cada día de la semana.</p>';
+  else h += '<div class="empty">Aún no hay cambio anotado.</div>';
+  h += '</section>';
 
-  // detalle opcional
-  const autos = sum(G, 'autos');
-  const topC = Object.keys(byDate).filter(d => byDate[d].c > 0).sort((a, b) => byDate[b].c - byDate[a].c).slice(0, 5);
-  const RT = ritmos();
-  h += '<details><summary>Ver más detalle</summary>';
-  h += '<h2>Números del periodo</h2>' +
-    '<div class="row"><span>Días con ganancia anotada</span><span class="amt">' + gDays + '</span></div>' +
-    '<div class="row"><span>Veces que se puso cambio</span><span class="amt">' + C.length + '</span></div>' +
-    '<div class="row"><span>Cambio comparado con la ganancia</span><span class="amt">' + (gTot ? Math.round(cTot / gTot * 100) + '%' : '—') + '</span></div>' +
-    (autos ? '<div class="row"><span>Autos</span><span class="amt">' + autos + '</span></div><div class="row"><span>Pago promedio por auto</span><span class="amt">' + money(gTot / autos) + '</span></div>' : '') +
-    '<div class="row"><span>Servicios hechos</span><span class="amt">' + Sv.length + '</span></div>' +
-    '<div class="row"><span>Gasto en servicios</span><span class="amt">' + money(sum(Sv, 'cost')) + '</span></div>';
-  h += '<h2>Días con más cambio</h2>' + (topC.length ? topC.map(d => '<div class="row"><span>' + fdate(d) + '</span><span class="amt">' + money(byDate[d].c) + '</span></div>').join('') : '<div class="empty">Sin datos.</div>');
-  h += '<h2>Fallas por equipo</h2>' + EQ.map(k => {
-    const e = Sv.filter(r => r.equip === k), f = e.filter(r => /reparaci|falla|atasco/i.test(r.type || ''));
-    return '<div class="row"><span>' + esc(eqName(k)) + '</span><span class="amt">' + f.length + (f.length === 1 ? ' falla' : ' fallas') + '</span></div>';
-  }).join('');
-  h += '<h2>Cada cuánto se hace cada servicio</h2><p class="small">La app lo aprende de lo anotado. Necesita 2 veces el mismo servicio para calcularlo.</p>' +
-    RT.map(p => '<div class="row"><span><div class="t">' + esc(eqName(p.k)) + ': ' + esc(p.task.name) + '</div><div class="m">' + (p.int !== undefined ? 'Cada ' + p.int + ' días · ' + cuando(p).toLowerCase() : 'Anotado ' + p.n + (p.n === 1 ? ' vez' : ' veces')) + '</div></span></div>').join('');
-  h += '</details>';
+  // servicios
+  const Sv = R.filter(r => r.kind === 'servicio');
+  h += '<section class="card c-s"><div class="ct">Servicios</div>' + EQ.map(k => {
+    const e = Sv.filter(r => r.equip === k), f = e.filter(r => /reparaci|falla|atasco/i.test(r.type || '')).length;
+    return '<div class="row"><span><div class="t">' + esc(eqName(k)) + '</div><div class="m">' + (f ? f + (f === 1 ? ' falla' : ' fallas') : 'Sin fallas') + '</div></span><span class="amt">' + e.length + '</span></div>';
+  }).join('') + '<p class="small">Número de servicios en el periodo.</p>';
+  const RT = ritmos().filter(p => p.int !== undefined);
+  if (RT.length) h += '<details><summary>Cada cuánto se hace cada servicio</summary>' + RT.map(p => '<div class="row"><span><div class="t">' + esc(eqName(p.k)) + ': ' + esc(p.task.name) + '</div><div class="m">Cada ' + p.int + ' días · ' + cuando(p).toLowerCase() + '</div></span></div>').join('') + '</details>';
+  h += '</section>';
   return h;
 }
 
