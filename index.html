@@ -166,6 +166,15 @@ input,textarea{width:100%;font:22px system-ui,sans-serif;padding:14px;border:2px
 input:focus,textarea:focus{outline:3px solid var(--blue-soft);border-color:var(--blue)}
 input.huge{font-size:34px;font-weight:700;padding:16px}
 textarea{min-height:90px;font-size:19px}
+.den{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.den label{margin:0;font-size:19px;white-space:nowrap}
+.step-n{display:flex;align-items:center;gap:8px;flex:none}
+.step-n input{width:64px;text-align:center;font-size:24px;font-weight:700;padding:10px 6px}
+.sn{width:48px;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-size:28px;font-weight:700;color:var(--terra);line-height:1}
+.sn:active{transform:scale(.94);background:var(--terra-soft)}
+.total{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 4px;padding:16px;border-radius:16px;background:var(--ocre-soft);color:var(--ocre-ink)}
+.total span{font-size:20px;font-weight:700}
+.total b{font-size:34px;color:var(--ink);font-variant-numeric:tabular-nums}
 .denoms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .denoms label{font-size:17px;margin:6px 0 4px;color:var(--muted)}
 .summary{background:var(--soft);border-radius:14px;padding:16px;font-size:20px;margin-bottom:8px}
@@ -194,10 +203,11 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.5.0';
+const VER = '1.6.0';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
-const DENOMS = [1, 2, 5, 10, 20, 50];
+const DENOMS = [1, 2, 5, 10, 50];
+const denLabel = (d) => d >= 50 ? 'Billetes de $' + d : 'Monedas de $' + d;
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const KINDS = { servicio: 1, cambio: 1, ganancia: 1 };
@@ -591,10 +601,12 @@ function drawStep() {
       h += more;
     } else if (r.kind === 'cambio') {
       const dn = r.denoms || {};
-      h += '<div class="q">¿Cuánto cambio se puso al cajero?</div>' +
-        '<input class="huge" id="fMo" type="number" inputmode="decimal" min="0" step="any" placeholder="$0" value="' + esc(r.monto ?? '') + '" aria-label="Cantidad en pesos">' +
-        '<details' + (r.denoms ? ' open' : '') + '><summary>Contar por monedas y billetes</summary><p class="small">Escribe cuántas piezas de cada una. El total se calcula solo.</p><div class="denoms">' +
-        DENOMS.map(d => '<div><label for="d' + d + '">Piezas de $' + d + '</label><input id="d' + d + '" data-den="' + d + '" type="number" inputmode="numeric" min="0" value="' + esc(dn[d] ?? '') + '"></div>').join('') + '</div></details>' + more;
+      h += '<div class="q">¿Cuántas monedas y billetes pusiste?</div>' +
+        DENOMS.map(d => '<div class="den"><label for="d' + d + '">' + denLabel(d) + '</label><div class="step-n">' +
+          '<button type="button" class="sn" data-dec="' + d + '" aria-label="Quitar una">−</button>' +
+          '<input id="d' + d + '" data-den="' + d + '" type="number" inputmode="numeric" min="0" placeholder="0" value="' + esc(dn[d] ?? '') + '">' +
+          '<button type="button" class="sn" data-inc="' + d + '" aria-label="Agregar una">+</button></div></div>').join('') +
+        '<div class="total" id="fTot">' + totalHTML(r.denoms ? null : r.monto) + '</div>' + more;
     } else {
       h += '<div class="q">¿Cuánto se ganó?</div>' +
         '<input class="huge" id="fMo" type="number" inputmode="decimal" min="0" step="any" placeholder="$0" value="' + esc(r.monto ?? '') + '" aria-label="Ganancia en pesos">' +
@@ -605,7 +617,7 @@ function drawStep() {
   }
   scrIn.innerHTML = '<div class="grab" aria-hidden="true"></div><div class="step">' + h + '</div>';
   scrIn.scrollTop = 0;
-  if (F.step === 3 && r.kind !== 'servicio' && F.isNew) setTimeout(() => { const i = $('#fMo'); i && i.focus(); }, 50);
+  if (F.step === 3 && r.kind === 'ganancia' && F.isNew) setTimeout(() => { const i = $('#fMo'); i && i.focus(); }, 50);
 }
 let undoId = null, doneTimer = null;
 function showDone(msg, canUndo) {
@@ -614,12 +626,13 @@ function showDone(msg, canUndo) {
   clearTimeout(doneTimer);
   doneTimer = setTimeout(() => { if (scr.classList.contains('open') && scrIn.querySelector('.done')) closeScreen(); }, canUndo ? 4000 : 2500);
 }
-scr.addEventListener('input', (e) => {
-  if (!e.target.dataset.den) return;
-  let tot = 0, any = false;
-  scrIn.querySelectorAll('[data-den]').forEach(i => { const v = Number(i.value); if (v > 0) { any = true; tot += v * Number(i.dataset.den); } });
-  if (any) $('#fMo').value = tot;
-});
+function denTotal() { let t = 0; scrIn.querySelectorAll('[data-den]').forEach(i => { const v = Math.max(0, Math.floor(Number(i.value) || 0)); t += v * Number(i.dataset.den); }); return t; }
+function totalHTML(oldMonto) {
+  const t = scrIn.querySelector('[data-den]') ? denTotal() : 0;
+  if (!t && oldMonto) return '<span>Total guardado</span><b>' + money(oldMonto) + '</b>';
+  return '<span>Total</span><b>' + money(t) + '</b>';
+}
+scr.addEventListener('input', (e) => { if (e.target.dataset.den) $('#fTot').innerHTML = totalHTML(F && F.rec.denoms ? null : F && F.rec.monto); });
 scr.addEventListener('click', (e) => {
   const t = e.target;
   if (t === scr) return closeScreen();
@@ -632,6 +645,12 @@ scr.addEventListener('click', (e) => {
   const ep = t.closest('[data-eq-pick]'); if (ep) { F.rec.equip = ep.dataset.eqPick; F.step = 2; return drawStep(); }
   const tp = t.closest('[data-type-pick]'); if (tp) { F.rec.type = S.config[F.rec.equip].tasks[Number(tp.dataset.typePick)].name; F.step = 3; return drawStep(); }
   if (t.closest('[data-restart]')) { F.isNew = true; F.step = 1; return drawStep(); }
+  const inc = t.closest('[data-inc]'), dec = t.closest('[data-dec]');
+  if (inc || dec) {
+    const i = $('#d' + (inc || dec).dataset[inc ? 'inc' : 'dec']);
+    i.value = Math.max(0, (Number(i.value) || 0) + (inc ? 1 : -1)) || '';
+    $('#fTot').innerHTML = totalHTML(F.rec.denoms ? null : F.rec.monto); return;
+  }
   if (t.closest('[data-save]')) return saveForm();
   if (t.closest('[data-undo]') && undoId) {
     const r = S.regs.find(x => x.id === undoId);
@@ -652,14 +671,14 @@ function saveForm() {
   const tm = v('fTi'); if (/^\d{2}:\d{2}$/.test(tm)) r.time = tm;
   r.by = v('fBy'); r.notes = v('fNo');
   if (r.kind === 'servicio') r.cost = n(v('fCo'));
-  else {
+  else if (r.kind === 'cambio') {
+    const dn = {}; scrIn.querySelectorAll('[data-den]').forEach(i => { const c = Math.floor(Number(i.value) || 0); if (c > 0) dn[i.dataset.den] = c; });
+    if (Object.keys(dn).length) { r.denoms = dn; r.monto = denTotal(); }
+    else if (!(r.monto > 0) || F.isNew) { toast('Escribe cuántas monedas o billetes pusiste'); return; }
+  } else {
     const m = n(v('fMo'));
     if (!(m > 0)) { toast('Escribe la cantidad en pesos'); $('#fMo').focus(); return; }
-    r.monto = m;
-    if (r.kind === 'cambio') {
-      const dn = {}; scrIn.querySelectorAll('[data-den]').forEach(i => { const c = Number(i.value); if (c > 0) dn[i.dataset.den] = c; });
-      r.denoms = Object.keys(dn).length ? dn : undefined;
-    } else r.autos = n(v('fAu'));
+    r.monto = m; r.autos = n(v('fAu'));
   }
   r.dev = S.set.device; r.updatedAt = Date.now();
   const i = S.regs.findIndex(x => x.id === r.id);
