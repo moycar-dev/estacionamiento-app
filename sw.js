@@ -1,5 +1,5 @@
 // Sube CACHE (v2, v3…) cada vez que publiques cambios en la app.
-const CACHE = 'estac-v3';
+const CACHE = 'estac-v4';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
