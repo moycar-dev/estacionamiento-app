@@ -38,6 +38,39 @@
 .k-servicio .tile{background:var(--anil)} .k-cambio .tile{background:var(--ocre)} .k-ganancia .tile{background:var(--verde)}
 .k-servicio{border-color:#C9D6EC!important} .k-cambio{border-color:#EED7A4!important} .k-ganancia{border-color:#C3DEC8!important}
 .pagehead{border-left:0;margin-bottom:6px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:64px;height:64px;flex:none;border-radius:18px;box-shadow:0 0 0 3px #FBF6EC,0 6px 14px rgba(0,0,0,.25)}
+.brand .b1{font-size:16px;font-weight:600;color:#FCE9DF;line-height:1.1}
+.brand h1{font-size:27px;line-height:1.15}
+.greet{font-size:21px;font-weight:700;margin-top:16px}
+.hero .when{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.sec{font-size:20px;font-weight:800;margin:24px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.pill{font-size:15px;font-weight:700;padding:5px 12px;border-radius:999px;background:var(--verde-soft);color:var(--verde)}
+.pill.due{background:var(--ocre-soft);color:var(--ocre-ink)}
+.daycard{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:4px 16px}
+.ditem{display:flex;gap:14px;align-items:center;width:100%;padding:14px 0;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;font:inherit;color:inherit}
+.daycard > :last-child{border-bottom:0}
+.chk{width:42px;height:42px;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;flex:none;color:var(--muted)}
+.chk svg{width:22px;height:22px}
+.chk.ok{background:var(--verde);border-color:var(--verde);color:#fff}
+.chk.due{border-color:var(--ocre);color:var(--ocre-ink);background:var(--ocre-soft)}
+.ditem .grow{flex:1;min-width:0}
+.ditem .t{font-weight:700;font-size:19px}
+.ditem .m{color:var(--muted);font-size:16px}
+.ditem .go{width:22px;height:22px;color:var(--muted);flex:none}
+.mini{border:2px solid var(--verde);color:var(--verde);background:var(--card);border-radius:12px;padding:8px 12px;font-size:16px;font-weight:700;min-height:44px;flex:none}
+.tiles{display:grid;gap:12px}
+.tile2{display:flex;align-items:center;gap:16px;width:100%;padding:16px 18px;border-radius:22px;border:0;color:#fff;text-align:left;min-height:100px;box-shadow:0 4px 0 rgba(42,26,18,.18);transition:transform .12s ease,box-shadow .12s ease}
+.tile2:active{transform:translateY(3px) scale(.99);box-shadow:0 1px 0 rgba(42,26,18,.18)}
+.tile2.servicio{background:var(--anil)} .tile2.cambio{background:#94640A} .tile2.ganancia{background:var(--verde)}
+.tile2 .ic{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex:none}
+.tile2 .ic svg{width:30px;height:30px;color:#fff}
+.tile2 .tx{flex:1}
+.tile2 .tt{display:block;font-size:22px;font-weight:800;line-height:1.2}
+.tile2 .ts{display:block;font-size:16px;opacity:.92;margin-top:2px}
+.tile2 .go{width:26px;height:26px;color:#fff;opacity:.85;flex:none}
+.recent{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:0 16px}
+.undo{margin-top:12px}
 .pagehead h1{color:var(--terra)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:19px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
@@ -161,7 +194,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.4.0';
+const VER = '1.5.0';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 20, 50];
@@ -174,9 +207,13 @@ const ICON = {
   cambio: SVG('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>'),
   ganancia: SVG('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>'),
   check: SVG('<circle cx="12" cy="12" r="10"/><path d="M7 12.5l3.2 3.2L17 9"/>'),
-  back: SVG('<path d="M15 18l-6-6 6-6"/>')
+  back: SVG('<path d="M15 18l-6-6 6-6"/>'),
+  go: SVG('<path d="M9 6l6 6-6 6"/>'),
+  ok: SVG('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  clock: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
 };
 
+const LOGO = '<svg class="logo" viewBox="0 0 100 100" role="img" aria-label="Logo Estacionamiento San Juan de Dios"><rect width="100" height="100" rx="22" fill="#A8432A"/><rect x="18" y="28" width="8" height="50" rx="2" fill="#FBF6EC"/><rect x="13" y="75" width="18" height="6" rx="2" fill="#FBF6EC"/><rect x="22" y="38" width="66" height="11" rx="4" fill="#D99A1E"/><rect x="34" y="38" width="7" height="11" fill="#FBF6EC"/><rect x="49" y="38" width="7" height="11" fill="#FBF6EC"/><rect x="64" y="38" width="7" height="11" fill="#FBF6EC"/><rect x="79" y="38" width="6" height="11" fill="#FBF6EC"/><g><rect x="12" y="87" width="15.2" height="4" fill="#D99A1E"/><rect x="27.2" y="87" width="15.2" height="4" fill="#C8756C"/><rect x="42.4" y="87" width="15.2" height="4" fill="#FBF6EC"/><rect x="57.6" y="87" width="15.2" height="4" fill="#1F4F94"/><rect x="72.8" y="87" width="15.2" height="4" fill="#2D6E3E"/></g></svg>';
 const CFG_V = 2;
 function defConfig() {
   const t = (arr) => arr.map(name => ({ name }));
@@ -297,20 +334,51 @@ function cuando(p) {
 }
 
 /* ---------- vistas ---------- */
+function saludo() {
+  const h = Number(nowTime().slice(0, 2));
+  return (h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches') + (S.set.name ? ', ' + esc(S.set.name.split(' ')[0] === 'Don' || S.set.name.split(' ')[0] === 'Doña' ? S.set.name : S.set.name.split(' ')[0]) : '');
+}
 function vInicio() {
+  const t = today(), R = live(), hoy = R.filter(r => r.date === t);
+  const hc = hoy.filter(r => r.kind === 'cambio'), hg = hoy.filter(r => r.kind === 'ganancia');
   const urg = ritmos().filter(p => p.int !== undefined && p.left <= p.warn);
-  let h = '<div class="hero"><div style="font-size:18px;font-weight:600;color:#FCE9DF">Estacionamiento</div><h1>San Juan de Dios</h1><div class="date">' + fdate(today()) + '</div><div class="clock" id="clock">' + clockStr() + '</div><div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>' + statusLine() + adminNote();
-  h += '<button class="big k-servicio" data-new="servicio"><span class="tile">' + ICON.servicio + '</span>Anotar un servicio</button>';
-  h += '<button class="big k-cambio" data-new="cambio"><span class="tile">' + ICON.cambio + '</span>Anotar cambio al cajero</button>';
-  h += '<button class="big k-ganancia" data-new="ganancia"><span class="tile">' + ICON.ganancia + '</span>Anotar ganancia del día</button>';
-  if (urg.length) {
-    h += '<h2 class="pend">Pendientes</h2>';
-    urg.slice(0, 4).forEach(p => {
-      h += '<div class="todo"><div class="t">' + esc(eqName(p.k)) + ': ' + esc(p.task.name.toLowerCase()) + '</div><div class="m">' + cuando(p) + '. Se hace más o menos cada ' + p.int + ' días.</div>' +
-        '<button class="btn ok" data-done="' + esc(p.k) + '|' + esc(p.task.name) + '">Ya lo hice hoy</button></div>';
-    });
-  }
-  h += '<div style="margin-top:28px;text-align:center"><button class="link" data-go="ajustes">Configuración</button></div>';
+  const hour = Number(nowTime().slice(0, 2));
+  let h = '<div class="hero"><div class="brand">' + LOGO + '<div><div class="b1">Estacionamiento</div><h1>San Juan de Dios</h1></div></div>' +
+    '<div class="greet">' + saludo() + '</div><div class="when"><div class="clock" id="clock">' + clockStr() + '</div><div class="date">' + fdate(t) + '</div></div>' +
+    '<div class="stripe" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>' + statusLine() + adminNote();
+
+  // Tu día: lo que normalmente se hace en un día, con su estado
+  const items = [];
+  const lastT = (arr) => { const x = arr.slice().sort((a, b) => (b.time || '').localeCompare(a.time || ''))[0]; return x && x.time ? ' · ' + fmt12(x.time) : ''; };
+  items.push(hc.length
+    ? { ok: true, k: 'cambio', t: 'Cambio al cajero', m: 'Puesto hoy: ' + money(sum(hc, 'monto')) + lastT(hc), act: '<button class="mini" data-new="cambio">+ Más</button>' }
+    : { ok: false, k: 'cambio', t: 'Poner cambio al cajero', m: 'Aún no se anota hoy' });
+  items.push(hg.length
+    ? { ok: true, k: 'ganancia', t: 'Ganancia del día', m: 'Anotada: ' + money(sum(hg, 'monto')) + lastT(hg) }
+    : { ok: false, k: 'ganancia', t: 'Anotar la ganancia del día', m: hour >= 18 ? 'Ya es hora de cerrar el día' : 'Se anota al cerrar el día', due: hour >= 18 });
+  urg.slice(0, 3).forEach(p => items.push({ ok: false, svc: p, t: esc(eqName(p.k)) + ': ' + esc(p.task.name.toLowerCase()), m: cuando(p) + ' · cada ~' + p.int + ' días', due: true }));
+  const done = items.filter(i => i.ok).length;
+  h += '<div class="sec"><span>Tu día</span><span class="pill' + (done < items.length ? ' due' : '') + '">' + (done === items.length ? 'Todo listo' : done + ' de ' + items.length + ' listo') + '</span></div><div class="daycard">';
+  items.forEach(i => {
+    const chk = '<span class="chk' + (i.ok ? ' ok' : i.due ? ' due' : '') + '">' + (i.ok ? ICON.ok : i.svc ? ICON.servicio : ICON.clock) + '</span>';
+    const body = '<span class="grow"><div class="t">' + i.t + '</div><div class="m">' + i.m + '</div></span>';
+    if (i.svc) h += '<div class="ditem">' + chk + '<span class="grow"><div class="t">' + i.t + '</div><div class="m">' + i.m + '</div><button class="mini" style="margin-top:8px" data-done="' + esc(i.svc.k) + '|' + esc(i.svc.task.name) + '">Ya lo hice hoy</button></span></div>';
+    else if (i.ok) h += '<div class="ditem">' + chk + body + (i.act || '') + '</div>';
+    else h += '<button class="ditem" type="button" data-new="' + i.k + '">' + chk + body + '<span class="go">' + ICON.go + '</span></button>';
+  });
+  h += '</div>';
+
+  // Acciones principales
+  const tile = (k, tt, ts) => '<button class="tile2 ' + k + '" data-new="' + k + '"><span class="ic">' + ICON[k] + '</span><span class="tx"><span class="tt">' + tt + '</span><span class="ts">' + ts + '</span></span><span class="go">' + ICON.go + '</span></button>';
+  h += '<div class="sec"><span>¿Qué quieres anotar?</span></div><div class="tiles">' +
+    tile('servicio', 'Un servicio', 'Papel, reloj, batería, limpieza, fallas') +
+    tile('cambio', 'Cambio al cajero', 'Monedas y billetes que pusiste') +
+    tile('ganancia', 'Ganancia del día', 'Lo que se ganó al cerrar') + '</div>';
+
+  // Lo último
+  const ult = sortRegs(R).slice(0, 3);
+  if (ult.length) h += '<div class="sec"><span>Lo último</span><button class="link" data-go="historial" style="padding:0;min-height:40px">Ver todo</button></div><div class="recent">' + ult.map(line).join('') + '</div>';
+  h += '<div style="margin-top:22px;text-align:center"><button class="link" data-go="ajustes">Configuración</button></div>';
   return h;
 }
 
@@ -539,9 +607,12 @@ function drawStep() {
   scrIn.scrollTop = 0;
   if (F.step === 3 && r.kind !== 'servicio' && F.isNew) setTimeout(() => { const i = $('#fMo'); i && i.focus(); }, 50);
 }
-function showDone(msg) {
-  scrIn.innerHTML = '<div class="grab" aria-hidden="true"></div><div class="done">' + ICON.check + '<div class="q">' + esc(msg) + '</div><button class="btn" type="button" data-back>Listo</button></div>';
-  setTimeout(() => { if (scr.classList.contains('open') && scrIn.querySelector('.done')) closeScreen(); }, 2500);
+let undoId = null, doneTimer = null;
+function showDone(msg, canUndo) {
+  scrIn.innerHTML = '<div class="grab" aria-hidden="true"></div><div class="done">' + ICON.check + '<div class="q">' + esc(msg) + '</div><button class="btn" type="button" data-back>Listo</button>' +
+    (canUndo ? '<button class="btn sec undo" type="button" data-undo>Deshacer</button>' : '') + '</div>';
+  clearTimeout(doneTimer);
+  doneTimer = setTimeout(() => { if (scr.classList.contains('open') && scrIn.querySelector('.done')) closeScreen(); }, canUndo ? 4000 : 2500);
 }
 scr.addEventListener('input', (e) => {
   if (!e.target.dataset.den) return;
@@ -562,6 +633,11 @@ scr.addEventListener('click', (e) => {
   const tp = t.closest('[data-type-pick]'); if (tp) { F.rec.type = S.config[F.rec.equip].tasks[Number(tp.dataset.typePick)].name; F.step = 3; return drawStep(); }
   if (t.closest('[data-restart]')) { F.isNew = true; F.step = 1; return drawStep(); }
   if (t.closest('[data-save]')) return saveForm();
+  if (t.closest('[data-undo]') && undoId) {
+    const r = S.regs.find(x => x.id === undoId);
+    if (r) { r.del = 1; r.updatedAt = Date.now(); markPend(r.id); save(); sync(); }
+    undoId = null; clearTimeout(doneTimer); toast('Se deshizo'); return closeScreen();
+  }
   if (t.closest('[data-del]')) {
     if (!confirm('¿Borrar este registro? Se borra en todos los teléfonos.')) return;
     const r = S.regs.find(x => x.id === F.rec.id);
@@ -589,7 +665,8 @@ function saveForm() {
   const i = S.regs.findIndex(x => x.id === r.id);
   if (i >= 0) S.regs[i] = r; else S.regs.push(r);
   markPend(r.id); save(); sync();
-  showDone('Listo, quedó guardado');
+  undoId = F.isNew ? r.id : null;
+  showDone('Listo, quedó guardado', F.isNew);
 }
 function markPend(id) { if (!S.pend.includes(id)) S.pend.push(id); }
 
