@@ -169,11 +169,13 @@ textarea{min-height:90px;font-size:19px}
 .den{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .den label{margin:0;font-size:19px;white-space:nowrap}
 .step-n{display:flex;align-items:center;gap:8px;flex:none}
-.step-n input{width:64px;text-align:center;font-size:24px;font-weight:700;padding:10px 6px}
-.sn{width:48px;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-size:28px;font-weight:700;color:var(--terra);line-height:1}
-.sn:active{transform:scale(.94);background:var(--terra-soft)}
-.total{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 4px;padding:16px;border-radius:16px;background:var(--ocre-soft);color:var(--ocre-ink)}
-.total span{font-size:20px;font-weight:700}
+.step-n input{width:64px;text-align:center;font-size:24px;font-weight:800;padding:8px 4px;border:0;border-bottom:3px solid #E2B4A5;border-radius:0;background:transparent}
+.step-n input:focus{outline:none;border-bottom-color:var(--terra)}
+.sn{width:50px;height:50px;border-radius:50%;border:2px solid #E2B4A5;background:#FFFFFF;color:var(--terra);display:grid;place-items:center;box-shadow:0 3px 0 #E2B4A5;padding:0;transition:transform .1s ease,box-shadow .1s ease,background-color .1s ease}
+.sn svg{width:22px;height:22px}
+.sn:active{transform:translateY(3px);box-shadow:0 0 0 #E2B4A5;background:var(--terra-soft)}
+.total{display:flex;justify-content:space-between;align-items:center;margin:18px 0 4px;padding:16px 18px;border-radius:18px;background:#FFFFFF;border:2px solid #E2B4A5;border-left:8px solid var(--terra);box-shadow:0 3px 10px rgba(168,67,42,.08)}
+.total span{font-size:20px;font-weight:700;color:var(--terra)}
 .total b{font-size:34px;color:var(--ink);font-variant-numeric:tabular-nums}
 .denoms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .denoms label{font-size:17px;margin:6px 0 4px;color:var(--muted)}
@@ -203,7 +205,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.6.0';
+const VER = '1.6.1';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 50];
@@ -603,9 +605,9 @@ function drawStep() {
       const dn = r.denoms || {};
       h += '<div class="q">¿Cuántas monedas y billetes pusiste?</div>' +
         DENOMS.map(d => '<div class="den"><label for="d' + d + '">' + denLabel(d) + '</label><div class="step-n">' +
-          '<button type="button" class="sn" data-dec="' + d + '" aria-label="Quitar una">−</button>' +
+          '<button type="button" class="sn" data-dec="' + d + '" aria-label="Quitar una">' + SVG('<path d="M5 12h14"/>') + '</button>' +
           '<input id="d' + d + '" data-den="' + d + '" type="number" inputmode="numeric" min="0" placeholder="0" value="' + esc(dn[d] ?? '') + '">' +
-          '<button type="button" class="sn" data-inc="' + d + '" aria-label="Agregar una">+</button></div></div>').join('') +
+          '<button type="button" class="sn" data-inc="' + d + '" aria-label="Agregar una">' + SVG('<path d="M12 5v14M5 12h14"/>') + '</button></div></div>').join('') +
         '<div class="total" id="fTot">' + totalHTML(r.denoms ? null : r.monto) + '</div>' + more;
     } else {
       h += '<div class="q">¿Cuánto se ganó?</div>' +
