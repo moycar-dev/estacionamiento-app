@@ -98,7 +98,10 @@ h2.pend{color:var(--ocre-ink)}
 .btn.ok{background:var(--green)}
 .btn.danger{background:var(--bg);color:var(--red);border:2px solid #E7B9B5}
 .btn + .btn{margin-top:12px}
-.link{background:none;border:0;color:var(--blue);font-size:18px;text-decoration:underline;padding:14px 0;min-height:48px}
+.link{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:18px;padding:10px 18px;min-height:50px;background:#FFFFFF;border:2px solid #E2B4A5;border-radius:14px;box-shadow:0 3px 0 #E2B4A5;color:var(--terra);font-weight:700;text-decoration:none;transition:transform .1s ease,box-shadow .1s ease,background-color .1s ease}
+.link svg{width:22px;height:22px}
+.link:active,.back:active,summary:active{transform:translateY(3px);box-shadow:0 0 0 #E2B4A5;background:var(--terra-soft)}
+.link.sm{min-height:42px;padding:6px 14px;font-size:16px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
 .row .t{font-weight:600}
@@ -135,8 +138,12 @@ button.row{width:100%;background:none;border-left:0;border-right:0;border-top:0;
 .prog span{display:block;height:100%;background:var(--anil);border-radius:999px}
 svg.chart{width:100%;height:auto;display:block;margin-top:6px}
 .card details{margin-top:10px}
-details{border-top:1px solid var(--line);margin-top:24px;padding-top:6px}
-summary{font-size:19px;color:var(--blue);padding:14px 0;cursor:pointer;min-height:52px}
+details{margin-top:20px}
+summary{display:flex;align-items:center;gap:10px;font-size:18px;padding:12px 16px;min-height:56px;cursor:pointer;list-style:none;background:#FFFFFF;border:2px solid #E2B4A5;border-radius:14px;box-shadow:0 3px 0 #E2B4A5;color:var(--terra);font-weight:700;text-decoration:none;transition:transform .1s ease,box-shadow .1s ease,background-color .1s ease}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'';width:22px;height:22px;flex:none;background:var(--terra);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") center/contain no-repeat}
+details[open] > summary{margin-bottom:8px;background:var(--terra-soft)}
+details[open] > summary::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E") center/contain no-repeat}
 nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:3px solid var(--terra);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{border:0;background:none;min-height:74px;font-size:18px;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 nav button svg{width:28px;height:28px}
@@ -157,7 +164,8 @@ nav button.on{color:var(--blue);font-weight:800}
 .big:active,.choice:active,.btn:active,.chip:active{transform:scale(.97)}
 nav button:active svg{transform:scale(.9)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-.back{background:none;border:0;font-size:20px;color:var(--blue);padding:12px 0;min-height:56px;display:flex;align-items:center;gap:6px}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:18px;padding:8px 16px 8px 10px;min-height:48px;margin:4px 0 6px;background:#FFFFFF;border:2px solid #E2B4A5;border-radius:14px;box-shadow:0 3px 0 #E2B4A5;color:var(--terra);font-weight:700;text-decoration:none;transition:transform .1s ease,box-shadow .1s ease,background-color .1s ease}
+.back svg{width:22px;height:22px}
 .q{font-size:26px;font-weight:800;margin:8px 0 18px}
 .choice{display:block;width:100%;min-height:68px;padding:14px 18px;margin-bottom:12px;border:2px solid var(--line);border-left:8px solid var(--anil);border-radius:14px;background:var(--card);font-size:21px;font-weight:600;text-align:left}
 .choice:active,.choice.sel{border-color:var(--blue);background:var(--blue-soft)}
@@ -205,7 +213,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.6.1';
+const VER = '1.6.2';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 50];
@@ -389,8 +397,8 @@ function vInicio() {
 
   // Lo último
   const ult = sortRegs(R).slice(0, 3);
-  if (ult.length) h += '<div class="sec"><span>Lo último</span><button class="link" data-go="historial" style="padding:0;min-height:40px">Ver todo</button></div><div class="recent">' + ult.map(line).join('') + '</div>';
-  h += '<div style="margin-top:22px;text-align:center"><button class="link" data-go="ajustes">Configuración</button></div>';
+  if (ult.length) h += '<div class="sec"><span>Lo último</span><button class="link sm" data-go="historial">Ver todo</button></div><div class="recent">' + ult.map(line).join('') + '</div>';
+  h += '<div style="margin-top:22px;text-align:center"><button class="link" data-go="ajustes">' + SVG('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>') + 'Configuración</button></div>';
   return h;
 }
 
@@ -560,7 +568,7 @@ function vAjustes() {
     const e = S.config[k];
     h += '<div data-eq="' + k + '" style="margin-bottom:22px"><label>Nombre del equipo</label><input class="eqn" value="' + esc(e.name) + '" style="margin-bottom:10px">' +
       (e.tasks || []).map(tk => '<div class="task"><input class="tn" aria-label="Servicio" value="' + esc(tk.name) + '"><button class="x" type="button" data-rm aria-label="Quitar servicio">×</button></div>').join('') +
-      '<button class="link" type="button" data-addtask>+ Agregar servicio</button></div>';
+      '<button class="link sm" type="button" data-addtask>+ Agregar servicio</button></div>';
   });
   h += '<button class="btn" type="button" id="cfgSave">Guardar equipos</button>';
   h += '<h2>Datos</h2><button class="btn sec" type="button" id="csv">Descargar todo en Excel (CSV)</button>' +
@@ -592,14 +600,14 @@ function drawStep() {
     h += '<div class="q">¿Qué se le hizo ' + (/^(la |pluma)/i.test(eqName(r.equip)) ? 'a la ' + esc(eqName(r.equip).replace(/^la /i, '').toLowerCase()) : 'al ' + esc(eqName(r.equip).replace(/^el /i, '').toLowerCase())) + '?</div>' +
       (S.config[r.equip].tasks || []).map((t, i) => '<button class="choice" data-type-pick="' + i + '">' + esc(t.name) + '</button>').join('');
   } else {
-    const more = '<details' + (F.isNew ? '' : ' open') + '><summary>Cambiar fecha u hora, o agregar nota</summary>' +
+    const more = '<details' + (F.isNew ? '' : ' open') + '><summary>Cambiar fecha, hora o nota</summary>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label for="fDa">Fecha</label><input id="fDa" type="date" value="' + esc(r.date) + '"></div><div><label for="fTi">Hora</label><input id="fTi" type="time" value="' + esc(r.time || '') + '"></div></div>' +
       '<label for="fBy">¿Quién lo hizo?</label><input id="fBy" value="' + esc(r.by || '') + '">' +
       (r.kind === 'servicio' ? '<label for="fCo">¿Cuánto costó? (si costó)</label><input id="fCo" type="number" inputmode="decimal" min="0" step="any" value="' + esc(r.cost ?? '') + '">' : '') +
       '<label for="fNo">Nota</label><textarea id="fNo">' + esc(r.notes || '') + '</textarea></details>';
     if (r.kind === 'servicio') {
       h += '<div class="q">¿Guardar este servicio?</div><div class="summary"><b>' + esc(eqName(r.equip)) + '</b>' + esc(r.type) + '<br><span class="small">' + rel(r.date) + (r.time ? ', ' + fmt12(r.time) : '') + '</span></div>';
-      if (!F.isNew) h += '<button class="link" type="button" data-restart>Cambiar equipo o servicio</button>';
+      if (!F.isNew) h += '<button class="link sm" type="button" data-restart style="margin-bottom:4px">Cambiar equipo o servicio</button>';
       h += more;
     } else if (r.kind === 'cambio') {
       const dn = r.denoms || {};
