@@ -176,6 +176,10 @@ input,textarea{width:100%;font:22px system-ui,sans-serif;padding:14px;border:2px
 input:focus,textarea:focus{outline:3px solid var(--blue-soft);border-color:var(--blue)}
 input.huge{font-size:34px;font-weight:700;padding:16px}
 textarea{min-height:90px;font-size:19px}
+.segs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{min-height:58px;border-radius:14px;border:2px solid #E2B4A5;background:#fff;color:var(--ink);font-size:19px;font-weight:700;box-shadow:0 3px 0 #E2B4A5;transition:transform .1s ease,box-shadow .1s ease}
+.seg.on{background:var(--terra);border-color:var(--terra);color:#fff;box-shadow:0 3px 0 #7E2F1C}
+.seg:active{transform:translateY(3px);box-shadow:none}
 .den{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .den label{margin:0;font-size:19px;white-space:nowrap}
 .step-n{display:flex;align-items:center;gap:8px;flex:none}
@@ -227,7 +231,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.7.1';
+const VER = '1.8.0';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 50];
@@ -420,7 +424,7 @@ function line(r) {
   let t, amt = '';
   if (r.kind === 'servicio') t = esc(eqName(r.equip)) + ': ' + esc(r.type);
   else if (r.kind === 'cambio') { t = 'Cambio al cajero'; amt = money(r.monto); }
-  else { t = 'Ganancia' + (r.autos ? ' (' + r.autos + ' autos)' : ''); amt = money(r.monto); }
+  else { const g = /^acum:[a-z0-9]+:(\d+)$/.exec(r.type || ''); t = 'Ganancia' + (g ? ' · parte de ' + g[1] + ' días' : '') + (r.autos ? ' (' + r.autos + ' autos)' : ''); amt = money(r.monto); }
   const m = [rel(r.date) + (r.time ? ', ' + fmt12(r.time) : ''), r.by].filter(Boolean).map(esc).join(' · ');
   return '<button class="row" type="button" data-edit="' + esc(r.id) + '"><span><div class="t">' + t + '</div><div class="m">' + m + '</div></span><span class="amt">' + amt + '</span></button>';
 }
@@ -632,16 +636,48 @@ function drawStep() {
           '<button type="button" class="sn" data-inc="' + d + '" aria-label="Agregar una">' + SVG('<path d="M12 5v14M5 12h14"/>') + '</button></div></div>').join('') +
         '<div class="total" id="fTot">' + totalHTML(r.denoms ? null : r.monto) + '</div>' + more;
     } else {
-      h += '<div class="q">¿Cuánto se ganó?</div>' +
-        '<input class="huge" id="fMo" type="number" inputmode="decimal" min="0" step="any" placeholder="$0" value="' + esc(r.monto ?? '') + '" aria-label="Ganancia en pesos">' +
+      const grp = acumInfo(r);
+      if (F.isNew) {
+        const sp = F.span || 1, opt = (n, l) => '<button type="button" class="seg' + (sp === n || (n === 4 && sp >= 4) ? ' on' : '') + '" data-span="' + n + '">' + l + '</button>';
+        h += '<div class="q">¿De cuántos días es este dinero?</div><div class="segs">' + opt(1, 'Solo de hoy') + opt(2, '2 días') + opt(3, '3 días') + opt(4, 'Más días') + '</div>' +
+          (sp >= 4 ? '<label for="fSp">¿Cuántos días?</label><input id="fSp" type="number" inputmode="numeric" min="2" max="31" value="' + sp + '">' : '') +
+          '<div class="q" style="margin-top:22px">' + (sp > 1 ? '¿Cuánto se juntó en total?' : '¿Cuánto se ganó?') + '</div>';
+      } else {
+        h += '<div class="q">Ganancia</div>' + (grp ? '<div class="summary">Este registro es parte de un conteo de <b style="display:inline;font-size:inherit">' + grp.n + ' días</b> (' + money(grp.total) + ' en total).<br><span class="small">Aquí corriges solo este día. "Borrar" quita el conteo completo.</span></div>' : '');
+      }
+      h += '<input class="huge" id="fMo" type="number" inputmode="decimal" min="0" step="any" placeholder="$0" value="' + esc(r.monto ?? '') + '" aria-label="Ganancia en pesos">' +
+        (F.isNew ? '<div class="total" id="fSpan" style="' + ((F.span || 1) > 1 ? '' : 'display:none') + '"></div>' : '') +
         '<label for="fAu">¿Cuántos autos entraron? (si sabes)</label><input id="fAu" type="number" inputmode="numeric" min="0" value="' + esc(r.autos ?? '') + '">' + more;
     }
     h += '<div style="margin-top:24px"><button class="btn ok" type="button" data-save>Guardar</button>' +
-      (F.isNew ? '' : '<button class="btn danger" type="button" data-del>Borrar este registro</button>') + '</div>';
+      (F.isNew ? '' : '<button class="btn danger" type="button" data-del>' + (acumInfo(r) ? 'Borrar el conteo completo' : 'Borrar este registro') + '</button>') + '</div>';
   }
   scrIn.innerHTML = '<div class="grab" aria-hidden="true"></div><div class="step">' + h + '</div>';
   scrIn.scrollTop = 0;
+  spanPreview();
   if (F.step === 3 && r.kind === 'ganancia' && F.isNew) setTimeout(() => { const i = $('#fMo'); i && i.focus(); }, 50);
+}
+/* ---------- ganancia de varios días (acumulada) ---------- */
+// Se guarda como un registro por día, repartido en partes iguales, con type = 'acum:<grupo>:<días>'.
+function acumInfo(r) {
+  const m = /^acum:([a-z0-9]+):(\d+)$/.exec((r && r.type) || '');
+  if (!m) return null;
+  const parts = live().filter(x => x.type === r.type);
+  return { gid: m[1], n: Number(m[2]), total: sum(parts, 'monto'), parts };
+}
+function spanDays() {
+  if (!F || !F.isNew || F.rec.kind !== 'ganancia') return 1;
+  const i = $('#fSp'); const n = i ? Math.floor(Number(i.value) || 0) : (F.span || 1);
+  return Math.max(1, Math.min(31, n));
+}
+function spanPreview() {
+  const box = $('#fSpan'); if (!box) return;
+  const n = spanDays();
+  if (n < 2) { box.style.display = 'none'; return; }
+  const end = ($('#fDa') && $('#fDa').value) || F.rec.date, start = addDays(end, -(n - 1));
+  const tot = Number(($('#fMo') || {}).value) || 0;
+  box.style.display = '';
+  box.innerHTML = '<span style="font-size:17px">Del ' + fdate(start).toLowerCase() + '<br>al ' + fdate(end).toLowerCase() + '</span><b style="font-size:22px;text-align:right">' + (tot ? money(tot / n) + '<br><span style="font-size:14px;font-weight:600;color:var(--muted)">por día</span>' : '') + '</b>';
 }
 let undoId = null, doneTimer = null;
 function showDone(msg, canUndo) {
@@ -656,7 +692,7 @@ function totalHTML(oldMonto) {
   if (!t && oldMonto) return '<span>Total guardado</span><b>' + money(oldMonto) + '</b>';
   return '<span>Total</span><b>' + money(t) + '</b>';
 }
-scr.addEventListener('input', (e) => { if (e.target.dataset.den) $('#fTot').innerHTML = totalHTML(F && F.rec.denoms ? null : F && F.rec.monto); });
+scr.addEventListener('input', (e) => { if (['fMo', 'fSp', 'fDa'].includes(e.target.id)) spanPreview(); if (e.target.dataset.den) $('#fTot').innerHTML = totalHTML(F && F.rec.denoms ? null : F && F.rec.monto); });
 scr.addEventListener('click', (e) => {
   const t = e.target;
   if (t === scr) return closeScreen();
@@ -669,6 +705,8 @@ scr.addEventListener('click', (e) => {
   const ep = t.closest('[data-eq-pick]'); if (ep) { F.rec.equip = ep.dataset.eqPick; F.step = 2; return drawStep(); }
   const tp = t.closest('[data-type-pick]'); if (tp) { F.rec.type = S.config[F.rec.equip].tasks[Number(tp.dataset.typePick)].name; F.step = 3; return drawStep(); }
   if (t.closest('[data-restart]')) { F.isNew = true; F.step = 1; return drawStep(); }
+  const sg = t.closest('[data-span]');
+  if (sg) { const keep = ($('#fMo') || {}).value; F.span = Number(sg.dataset.span); drawStep(); if (keep) { $('#fMo').value = keep; spanPreview(); } return; }
   const inc = t.closest('[data-inc]'), dec = t.closest('[data-dec]');
   if (inc || dec) {
     const i = $('#d' + (inc || dec).dataset[inc ? 'inc' : 'dec']);
@@ -677,14 +715,15 @@ scr.addEventListener('click', (e) => {
   }
   if (t.closest('[data-save]')) return saveForm();
   if (t.closest('[data-undo]') && undoId) {
-    const r = S.regs.find(x => x.id === undoId);
-    if (r) { r.del = 1; r.updatedAt = Date.now(); markPend(r.id); save(); sync(); }
+    [].concat(undoId).forEach(id => { const r = S.regs.find(x => x.id === id); if (r) { r.del = 1; r.updatedAt = Date.now(); markPend(r.id); } });
+    save(); sync();
     undoId = null; clearTimeout(doneTimer); toast('Se deshizo'); return closeScreen();
   }
   if (t.closest('[data-del]')) {
-    if (!confirm('¿Borrar este registro? Se borra en todos los teléfonos.')) return;
-    const r = S.regs.find(x => x.id === F.rec.id);
-    if (r) { r.del = 1; r.updatedAt = Date.now(); markPend(r.id); }
+    const g = acumInfo(F.rec);
+    if (!confirm(g ? '¿Borrar el conteo completo de ' + g.n + ' días (' + money(g.total) + ')? Se borra en todos los teléfonos.' : '¿Borrar este registro? Se borra en todos los teléfonos.')) return;
+    const ids = g ? g.parts.map(x => x.id) : [F.rec.id];
+    ids.forEach(id => { const r = S.regs.find(x => x.id === id); if (r) { r.del = 1; r.updatedAt = Date.now(); markPend(r.id); } });
     save(); sync(); showDone('Registro borrado');
   }
 });
@@ -703,6 +742,20 @@ function saveForm() {
     const m = n(v('fMo'));
     if (!(m > 0)) { toast('Escribe la cantidad en pesos'); $('#fMo').focus(); return; }
     r.monto = m; r.autos = n(v('fAu'));
+    const days = spanDays();
+    if (F.isNew && days > 1) {
+      const gid = rid(), type = 'acum:' + gid + ':' + days, ids = [], now = Date.now();
+      const per = Math.floor(m / days * 100) / 100, au = r.autos ? Math.floor(r.autos / days) : undefined;
+      for (let k = 0; k < days; k++) {
+        const last = k === days - 1;
+        const x = { id: rid() + k, kind: 'ganancia', type, date: addDays(r.date, -(days - 1 - k)), time: r.time, by: r.by,
+          notes: r.notes || ('Conteo de ' + days + ' días'), monto: last ? Math.round((m - per * (days - 1)) * 100) / 100 : per,
+          autos: r.autos ? (last ? r.autos - au * (days - 1) : au) : undefined, dev: S.set.device, updatedAt: now };
+        S.regs.push(x); markPend(x.id); ids.push(x.id);
+      }
+      save(); sync(); undoId = ids; F.span = 1;
+      return showDone('Listo, se repartió en ' + days + ' días', true);
+    }
   }
   r.dev = S.set.device; r.updatedAt = Date.now();
   const i = S.regs.findIndex(x => x.id === r.id);
