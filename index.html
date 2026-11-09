@@ -176,6 +176,10 @@ input,textarea{width:100%;font:22px system-ui,sans-serif;padding:14px;border:2px
 input:focus,textarea:focus{outline:3px solid var(--blue-soft);border-color:var(--blue)}
 input.huge{font-size:34px;font-weight:700;padding:16px}
 textarea{min-height:90px;font-size:19px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.row2 > div{min-width:0}
+.row2 input{font-size:18px;padding:12px 10px;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;min-height:52px}
+@media (max-width:440px){.row2{grid-template-columns:1fr}}
 .segs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .seg{min-height:58px;border-radius:14px;border:2px solid #E2B4A5;background:#fff;color:var(--ink);font-size:19px;font-weight:700;box-shadow:0 3px 0 #E2B4A5;transition:transform .1s ease,box-shadow .1s ease}
 .seg.on{background:var(--terra);border-color:var(--terra);color:#fff;box-shadow:0 3px 0 #7E2F1C}
@@ -231,7 +235,7 @@ textarea{min-height:90px;font-size:19px}
 
 <script>
 'use strict';
-const VER = '1.8.0';
+const VER = '1.8.1';
 const KEY = 'estac-v1';
 const EQ = ['entrada', 'cajero', 'salida'];
 const DENOMS = [1, 2, 5, 10, 50];
@@ -638,15 +642,17 @@ function drawStep() {
     } else {
       const grp = acumInfo(r);
       if (F.isNew) {
-        const sp = F.span || 1, opt = (n, l) => '<button type="button" class="seg' + (sp === n || (n === 4 && sp >= 4) ? ' on' : '') + '" data-span="' + n + '">' + l + '</button>';
-        h += '<div class="q">¿De cuántos días es este dinero?</div><div class="segs">' + opt(1, 'Solo de hoy') + opt(2, '2 días') + opt(3, '3 días') + opt(4, 'Más días') + '</div>' +
-          (sp >= 4 ? '<label for="fSp">¿Cuántos días?</label><input id="fSp" type="number" inputmode="numeric" min="2" max="31" value="' + sp + '">' : '') +
-          '<div class="q" style="margin-top:22px">' + (sp > 1 ? '¿Cuánto se juntó en total?' : '¿Cuánto se ganó?') + '</div>';
+        const mul = !!F.multi, opt = (v, l) => '<button type="button" class="seg' + (mul === v ? ' on' : '') + '" data-multi="' + (v ? 1 : 0) + '">' + l + '</button>';
+        if (mul && !F.desde) { F.hasta = today(); F.desde = addDays(F.hasta, -2); }
+        h += '<div class="q">¿De qué días es este dinero?</div><div class="segs">' + opt(false, 'De un solo día') + opt(true, 'De varios días') + '</div>' +
+          (mul ? '<div class="row2"><div><label for="fDesde">Desde</label><input id="fDesde" type="date" value="' + esc(F.desde) + '"></div>' +
+            '<div><label for="fHasta">Hasta</label><input id="fHasta" type="date" value="' + esc(F.hasta) + '"></div></div>' : '') +
+          '<div class="q" style="margin-top:22px">' + (mul ? '¿Cuánto se juntó en total?' : '¿Cuánto se ganó?') + '</div>';
       } else {
         h += '<div class="q">Ganancia</div>' + (grp ? '<div class="summary">Este registro es parte de un conteo de <b style="display:inline;font-size:inherit">' + grp.n + ' días</b> (' + money(grp.total) + ' en total).<br><span class="small">Aquí corriges solo este día. "Borrar" quita el conteo completo.</span></div>' : '');
       }
       h += '<input class="huge" id="fMo" type="number" inputmode="decimal" min="0" step="any" placeholder="$0" value="' + esc(r.monto ?? '') + '" aria-label="Ganancia en pesos">' +
-        (F.isNew ? '<div class="total" id="fSpan" style="' + ((F.span || 1) > 1 ? '' : 'display:none') + '"></div>' : '') +
+        (F.isNew ? '<div class="total" id="fSpan" style="' + (F.multi ? '' : 'display:none') + '"></div>' : '') +
         '<label for="fAu">¿Cuántos autos entraron? (si sabes)</label><input id="fAu" type="number" inputmode="numeric" min="0" value="' + esc(r.autos ?? '') + '">' + more;
     }
     h += '<div style="margin-top:24px"><button class="btn ok" type="button" data-save>Guardar</button>' +
@@ -665,19 +671,25 @@ function acumInfo(r) {
   const parts = live().filter(x => x.type === r.type);
   return { gid: m[1], n: Number(m[2]), total: sum(parts, 'monto'), parts };
 }
-function spanDays() {
-  if (!F || !F.isNew || F.rec.kind !== 'ganancia') return 1;
-  const i = $('#fSp'); const n = i ? Math.floor(Number(i.value) || 0) : (F.span || 1);
-  return Math.max(1, Math.min(31, n));
+function spanRange() {
+  if (!F || !F.isNew || F.rec.kind !== 'ganancia' || !F.multi) return null;
+  const d = ($('#fDesde') || {}).value || F.desde, hst = ($('#fHasta') || {}).value || F.hasta;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !/^\d{4}-\d{2}-\d{2}$/.test(hst)) return { err: 'Elige las dos fechas' };
+  const n = diffDays(hst, d) + 1;
+  if (n < 1) return { err: '"Desde" debe ser antes de "Hasta"' };
+  if (n > 31) return { err: 'Máximo 31 días' };
+  return { desde: d, hasta: hst, n };
 }
 function spanPreview() {
+  // en varios días, la fecha sale de Desde/Hasta: se oculta la fecha suelta
+  const fd = $('#fDa'); if (fd) fd.parentElement.style.display = F && F.multi && F.isNew ? 'none' : '';
   const box = $('#fSpan'); if (!box) return;
-  const n = spanDays();
-  if (n < 2) { box.style.display = 'none'; return; }
-  const end = ($('#fDa') && $('#fDa').value) || F.rec.date, start = addDays(end, -(n - 1));
-  const tot = Number(($('#fMo') || {}).value) || 0;
+  const rg = spanRange();
+  if (!rg) { box.style.display = 'none'; return; }
   box.style.display = '';
-  box.innerHTML = '<span style="font-size:17px">Del ' + fdate(start).toLowerCase() + '<br>al ' + fdate(end).toLowerCase() + '</span><b style="font-size:22px;text-align:right">' + (tot ? money(tot / n) + '<br><span style="font-size:14px;font-weight:600;color:var(--muted)">por día</span>' : '') + '</b>';
+  if (rg.err) { box.innerHTML = '<span style="font-size:17px">' + esc(rg.err) + '</span>'; return; }
+  const tot = Number(($('#fMo') || {}).value) || 0;
+  box.innerHTML = '<span style="font-size:17px">' + rg.n + (rg.n === 1 ? ' día' : ' días') + ':<br>' + fdate(rg.desde).toLowerCase() + (rg.n > 1 ? '<br>al ' + fdate(rg.hasta).toLowerCase() : '') + '</span><b style="font-size:22px;text-align:right">' + (tot ? money(tot / rg.n) + '<br><span style="font-size:14px;font-weight:600;color:var(--muted)">por día</span>' : '') + '</b>';
 }
 let undoId = null, doneTimer = null;
 function showDone(msg, canUndo) {
@@ -692,7 +704,7 @@ function totalHTML(oldMonto) {
   if (!t && oldMonto) return '<span>Total guardado</span><b>' + money(oldMonto) + '</b>';
   return '<span>Total</span><b>' + money(t) + '</b>';
 }
-scr.addEventListener('input', (e) => { if (['fMo', 'fSp', 'fDa'].includes(e.target.id)) spanPreview(); if (e.target.dataset.den) $('#fTot').innerHTML = totalHTML(F && F.rec.denoms ? null : F && F.rec.monto); });
+scr.addEventListener('input', (e) => { if (['fMo', 'fDesde', 'fHasta'].includes(e.target.id)) { if (F) { F.desde = ($('#fDesde') || {}).value || F.desde; F.hasta = ($('#fHasta') || {}).value || F.hasta; } spanPreview(); } if (e.target.dataset.den) $('#fTot').innerHTML = totalHTML(F && F.rec.denoms ? null : F && F.rec.monto); });
 scr.addEventListener('click', (e) => {
   const t = e.target;
   if (t === scr) return closeScreen();
@@ -705,8 +717,8 @@ scr.addEventListener('click', (e) => {
   const ep = t.closest('[data-eq-pick]'); if (ep) { F.rec.equip = ep.dataset.eqPick; F.step = 2; return drawStep(); }
   const tp = t.closest('[data-type-pick]'); if (tp) { F.rec.type = S.config[F.rec.equip].tasks[Number(tp.dataset.typePick)].name; F.step = 3; return drawStep(); }
   if (t.closest('[data-restart]')) { F.isNew = true; F.step = 1; return drawStep(); }
-  const sg = t.closest('[data-span]');
-  if (sg) { const keep = ($('#fMo') || {}).value; F.span = Number(sg.dataset.span); drawStep(); if (keep) { $('#fMo').value = keep; spanPreview(); } return; }
+  const sg = t.closest('[data-multi]');
+  if (sg) { const keep = ($('#fMo') || {}).value; F.multi = sg.dataset.multi === '1'; drawStep(); if (keep) { $('#fMo').value = keep; spanPreview(); } return; }
   const inc = t.closest('[data-inc]'), dec = t.closest('[data-dec]');
   if (inc || dec) {
     const i = $('#d' + (inc || dec).dataset[inc ? 'inc' : 'dec']);
@@ -742,7 +754,10 @@ function saveForm() {
     const m = n(v('fMo'));
     if (!(m > 0)) { toast('Escribe la cantidad en pesos'); $('#fMo').focus(); return; }
     r.monto = m; r.autos = n(v('fAu'));
-    const days = spanDays();
+    const rg = spanRange();
+    if (rg && rg.err) { toast(rg.err); return; }
+    if (rg) r.date = rg.hasta;
+    const days = rg ? rg.n : 1;
     if (F.isNew && days > 1) {
       const gid = rid(), type = 'acum:' + gid + ':' + days, ids = [], now = Date.now();
       const per = Math.floor(m / days * 100) / 100, au = r.autos ? Math.floor(r.autos / days) : undefined;
@@ -753,7 +768,7 @@ function saveForm() {
           autos: r.autos ? (last ? r.autos - au * (days - 1) : au) : undefined, dev: S.set.device, updatedAt: now };
         S.regs.push(x); markPend(x.id); ids.push(x.id);
       }
-      save(); sync(); undoId = ids; F.span = 1;
+      save(); sync(); undoId = ids;
       return showDone('Listo, se repartió en ' + days + ' días', true);
     }
   }
